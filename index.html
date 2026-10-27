@@ -1,0 +1,2341 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>3D CAD Studio for Canva (iPad Optimized)</title>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Three.js & Controls & Exporters -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/STLExporter.js"></script>
+  <style>
+    * {
+        box-sizing: border-box;
+        user-select: none;
+        -webkit-user-select: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    body, html {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: #f1f5f9;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Meiryo", sans-serif;
+        touch-action: none;
+    }
+
+    #app-wrapper {
+        display: flex;
+        flex-direction: column;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        position: relative;
+    }
+
+    #canvas-container {
+        flex: 1;
+        width: 100%;
+        height: 100%;
+        position: relative;
+        z-index: 1;
+        overflow: hidden;
+    }
+
+    /* Glassmorphism Panel (Light Mode) */
+    .glass-panel {
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        border-radius: 10px;
+        color: #0f172a;
+    }
+
+    /* Compact UI Buttons */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        padding: 4px 10px;
+        height: 30px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        border: none;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        color: #1e293b;
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        white-space: nowrap;
+    }
+
+    .btn:hover { background: #f1f5f9; }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary { background: #2563eb; color: #ffffff; border-color: #3b82f6; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-success { background: #059669; color: #ffffff; border-color: #10b981; }
+    .btn-success:hover { background: #047857; }
+    .btn-warning { background: #d97706; color: #ffffff; border-color: #f59e0b; }
+    .btn-danger  { background: #dc2626; color: #ffffff; border-color: #ef4444; }
+
+    .btn-gold {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: #ffffff;
+        border: 1px solid #fbbf24;
+        font-weight: 800;
+    }
+
+    .btn-stl {
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+        color: #ffffff;
+        border: 1px solid #38bdf8;
+        font-weight: 800;
+    }
+
+    /* Top Header Bar */
+    #header-bar {
+        flex-shrink: 0;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        padding: 6px 10px;
+        margin: 6px 6px 0 6px;
+    }
+
+    .app-title {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 900;
+        color: #0284c7;
+        white-space: nowrap;
+    }
+
+    #object-dropdown {
+        background: #ffffff;
+        color: #0369a1;
+        border: 1px solid #38bdf8;
+        border-radius: 6px;
+        padding: 3px 6px;
+        font-size: 11px;
+        font-weight: 700;
+        outline: none;
+        max-width: 130px;
+        cursor: pointer;
+    }
+
+    #guide-bar {
+        flex: 1;
+        font-size: 11px;
+        font-weight: 700;
+        color: #d97706;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        padding: 0 6px;
+    }
+
+    /* Bottom Toolbar */
+    #bottom-nav {
+        flex-shrink: 0;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        padding: 6px;
+        margin: 0 6px 6px 6px;
+    }
+
+    .tab-group {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 2px;
+    }
+
+    .tab-btn {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 10px;
+        height: 30px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #475569;
+        background: transparent;
+        border: 1px solid transparent;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .tab-btn.active {
+        color: #ffffff;
+        background: #2563eb;
+        border-color: #3b82f6;
+        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+    }
+
+    /* Selection Overlay Panel */
+    #selection-panel {
+        position: absolute;
+        bottom: 90px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 15;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+        padding: 8px 10px;
+        border: 1.5px solid #d97706;
+        white-space: nowrap;
+        max-width: 95vw;
+        overflow-x: auto;
+    }
+
+    .coord-input {
+        width: 42px;
+        background: #ffffff;
+        border: 1px solid #0284c7;
+        color: #0284c7;
+        font-size: 10px;
+        font-weight: 800;
+        border-radius: 4px;
+        padding: 2px 2px;
+        text-align: center;
+    }
+
+    #toast {
+        position: absolute;
+        top: 55px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 30;
+        padding: 6px 16px;
+        font-size: 11px;
+        font-weight: 700;
+        opacity: 0;
+        transition: opacity 0.3s ease, transform 0.3s ease;
+        pointer-events: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    #poly-finish-btn {
+        position: absolute;
+        top: 55px;
+        right: 20px;
+        z-index: 20;
+        display: none;
+    }
+
+    #extrude-panel {
+        position: absolute;
+        bottom: 90px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 20;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        width: 320px;
+        border: 1.5px solid #0284c7;
+    }
+
+    #cutter-ctrl-panel {
+        position: absolute;
+        bottom: 90px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 20;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        width: 320px;
+        border: 1.5px solid #dc2626;
+    }
+  </style>
+ </head>
+ <body>
+  <!-- ファイル読み込み用インプット -->
+  <input type="file" id="file-input" accept=".json" onchange="loadProjectFile(event)" style="display:none;">
+
+  <div id="app-wrapper">
+   <!-- TOP HEADER BAR -->
+   <div id="header-bar" class="glass-panel">
+    <div class="app-title">
+      <span>🧊 3D CAD</span> 
+      <select id="object-dropdown" onchange="onDropdownSelectObject(this.value)">
+        <option value="">📦 対象選択</option>
+      </select>
+    </div>
+    <div id="guide-bar">💡 対象モデルをタップするかリストから選択してください</div>
+    <div style="display: flex; align-items: center; gap: 4px;">
+      <!-- 保存・開く・STL出力 -->
+      <button onclick="saveProjectFile()" class="btn btn-success" title="プロジェクト保存"><i class="fa-solid fa-floppy-disk"></i> 保存</button>
+      <button onclick="document.getElementById('file-input').click()" class="btn btn-primary" title="プロジェクト読込"><i class="fa-solid fa-folder-open"></i> 開く</button>
+      <button onclick="exportSTL(false)" class="btn btn-stl" title="全モデルをSTL保存"><i class="fa-solid fa-print"></i> STL</button>
+      
+      <button id="btn-lock-view" onclick="toggleCameraLock()" class="btn" title="視点固定">
+        <i class="fa-solid fa-unlock" id="icon-lock-view"></i>
+      </button>
+      <button onclick="showAllObjects()" class="btn" title="全表示" style="color: #0284c7;"><i class="fa-solid fa-eye"></i></button>
+      <button onclick="undo()" class="btn" title="元に戻す"><i class="fa-solid fa-rotate-left"></i></button>
+      <button onclick="redo()" class="btn" title="やり直し"><i class="fa-solid fa-rotate-right"></i></button>
+      <button onclick="clearAllObjects()" class="btn btn-danger" title="全削除"><i class="fa-solid fa-trash-can"></i></button>
+    </div>
+   </div>
+
+   <!-- CENTER 3D CANVAS -->
+   <div id="canvas-container"></div>
+
+   <!-- FLOATING OVERLAYS -->
+   <div id="toast" class="glass-panel">
+     <i id="toast-icon" class="fa-solid fa-circle-info" style="color:#0284c7;"></i> <span id="toast-msg">3D CAD 起動完了</span>
+   </div>
+   
+   <div id="poly-finish-btn">
+     <button onclick="finishPolylineSketch()" class="btn btn-success" style="padding: 8px 16px;">
+       <i class="fa-solid fa-check"></i> スケッチ完了
+     </button>
+   </div>
+
+   <!-- SELECT, COORD & ROTATION OVERLAY PANEL -->
+   <div id="selection-panel" class="glass-panel">
+    <div style="display:flex; align-items:center; justify-content:space-between; width:100%; gap:8px;">
+      <span id="selected-obj-title" style="font-size: 11px; font-weight: 800; color: #d97706;">選択中: なし</span> 
+      <div style="display:flex; gap:4px;">
+        <button onclick="exportSTL(true)" class="btn btn-stl" style="height:24px; padding:0 6px;" title="選択モデルのみSTL出力"><i class="fa-solid fa-print"></i> STL</button>
+        <button onclick="copySelectedObject()" class="btn btn-gold" style="height:24px; padding:0 6px;"><i class="fa-solid fa-copy"></i> 複製</button>
+        <button onclick="hideSelectedObject()" class="btn" style="height:24px; padding:0 6px; background:#e2e8f0; color:#334155;" title="非表示"><i class="fa-solid fa-eye-slash"></i> 非表示</button>
+        <button onclick="deleteSelected()" class="btn btn-danger" style="height:24px; padding:0 6px;"><i class="fa-solid fa-trash"></i> 削除</button>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:8px; width:100%;">
+      <div style="display:flex; background:#e2e8f0; padding:2px; border-radius:6px; gap:2px;">
+        <button onclick="setGizmoMode('translate')" class="btn gizmo-btn btn-primary" data-mode="translate" style="height: 22px; padding: 0px 6px; font-size: 10px;">移動</button>
+        <button onclick="setGizmoMode('rotate')" class="btn gizmo-btn" data-mode="rotate" style="height: 22px; padding: 0px 6px; font-size: 10px;">回転</button>
+        <button onclick="setGizmoMode('scale')" class="btn gizmo-btn" data-mode="scale" style="height: 22px; padding: 0px 6px; font-size: 10px;">拡大</button>
+      </div>
+      <input type="color" id="panel-color" oninput="updateObjectColor()" style="width:24px; height:24px; border:none; background:none; cursor:pointer;" title="色を変更">
+    </div>
+
+    <!-- 座標数値移動コントロール -->
+    <div style="display:flex; align-items:center; gap:4px; width:100%; font-size:10px; background:rgba(226, 232, 240, 0.6); padding:4px 6px; border-radius:6px; overflow-x:auto;">
+      <span style="color:#475569; font-weight:700; white-space:nowrap;">数値移動:</span>
+      <span style="color:#dc2626; font-weight:800;">X</span>
+      <input type="number" id="coord-x" class="coord-input" step="1" onchange="onManualCoordInput()">
+      <div style="display:flex; gap:1px;">
+        <button onclick="nudgeObject('x', -1)" class="btn" style="height:20px; padding:0 4px; font-size:9px;">-1</button>
+        <button onclick="nudgeObject('x', 1)" class="btn" style="height:20px; padding:0 4px; font-size:9px;">+1</button>
+      </div>
+      
+      <span style="color:#16a34a; font-weight:800; margin-left:4px;">Y</span>
+      <input type="number" id="coord-y" class="coord-input" step="1" onchange="onManualCoordInput()">
+      <div style="display:flex; gap:1px;">
+        <button onclick="nudgeObject('y', -1)" class="btn" style="height:20px; padding:0 4px; font-size:9px;">-1</button>
+        <button onclick="nudgeObject('y', 1)" class="btn" style="height:20px; padding:0 4px; font-size:9px;">+1</button>
+      </div>
+
+      <span style="color:#2563eb; font-weight:800; margin-left:4px;">Z</span>
+      <input type="number" id="coord-z" class="coord-input" step="1" onchange="onManualCoordInput()">
+      <div style="display:flex; gap:1px;">
+        <button onclick="nudgeObject('z', -1)" class="btn" style="height:20px; padding:0 4px; font-size:9px;">-1</button>
+        <button onclick="nudgeObject('z', 1)" class="btn" style="height:20px; padding:0 4px; font-size:9px;">+1</button>
+      </div>
+    </div>
+
+    <!-- 角度数値回転コントロール -->
+    <div style="display:flex; align-items:center; gap:4px; width:100%; font-size:10px; background:rgba(226, 232, 240, 0.6); padding:4px 6px; border-radius:6px; overflow-x:auto;">
+      <span style="color:#475569; font-weight:700; white-space:nowrap;">角度回転:</span>
+      <span style="color:#dc2626; font-weight:800;">X</span>
+      <input type="number" id="rot-x" class="coord-input" step="15" onchange="onManualRotInput()">
+      <div style="display:flex; gap:1px;">
+        <button onclick="rotateObject('x', -15)" class="btn" style="height:20px; padding:0 3px; font-size:9px;">-15°</button>
+        <button onclick="rotateObject('x', 15)" class="btn" style="height:20px; padding:0 3px; font-size:9px;">+15°</button>
+        <button onclick="rotateObject('x', 90)" class="btn" style="height:20px; padding:0 3px; font-size:9px;">+90°</button>
+      </div>
+
+      <span style="color:#16a34a; font-weight:800; margin-left:4px;">Y</span>
+      <input type="number" id="rot-y" class="coord-input" step="15" onchange="onManualRotInput()">
+      <div style="display:flex; gap:1px;">
+        <button onclick="rotateObject('y', -15)" class="btn" style="height:20px; padding:0 3px; font-size:9px;">-15°</button>
+        <button onclick="rotateObject('y', 15)" class="btn" style="height:20px; padding:0 3px; font-size:9px;">+15°</button>
+        <button onclick="rotateObject('y', 90)" class="btn" style="height:20px; padding:0 3px; font-size:9px;">+90°</button>
+      </div>
+
+      <span style="color:#2563eb; font-weight:800; margin-left:4px;">Z</span>
+      <input type="number" id="rot-z" class="coord-input" step="15" onchange="onManualRotInput()">
+      <div style="display:flex; gap:1px;">
+        <button onclick="rotateObject('z', -15)" class="btn" style="height:20px; padding:0 3px; font-size:9px;">-15°</button>
+        <button onclick="rotateObject('z', 15)" class="btn" style="height:20px; padding:0 3px; font-size:9px;">+15°</button>
+        <button onclick="rotateObject('z', 90)" class="btn" style="height:20px; padding:0 3px; font-size:9px;">+90°</button>
+      </div>
+    </div>
+   </div>
+
+   <!-- 2D SKETCH -> 3D EXTRUDE PANEL -->
+   <div id="extrude-panel" class="glass-panel">
+    <div style="font-size: 11px; font-weight: 800; color: #0284c7;">⬆️ 新規作成: 押し出し高さの指定</div>
+    <div style="display:flex; align-items:center; gap:8px; width:100%;">
+      <input type="range" id="extrude-height" min="2" max="80" value="20" step="1" oninput="updateLiveExtrude(this.value)" style="flex: 1 1 0%;"> 
+      <span id="extrude-val" style="font-size: 11px; font-weight: 800; color: #0284c7; min-width: 40px; text-align: right;">20 mm</span>
+    </div>
+    <div style="display:flex; gap:6px; width:100%;">
+      <button onclick="confirmExtrude3D()" class="btn btn-success" style="flex: 1 1 0%;">3D化確定</button> 
+      <button onclick="cancelExtrude()" class="btn" style="flex: 1 1 0%;">キャンセル</button>
+    </div>
+   </div>
+
+   <!-- 3D CUTTER ADJUSTMENT PANEL -->
+   <div id="cutter-ctrl-panel" class="glass-panel">
+    <div style="font-size: 11px; font-weight: 800; color: #dc2626;">✂️ 切り取りカッターの調整（赤色部分が削れます）</div>
+    <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
+      <div style="display:flex; justify-content:space-between; font-size:10px; color:#475569;">
+        <span>切り取り深さ（高さ mm）:</span>
+        <span id="cutter-depth-val" style="color:#dc2626; font-weight:800;">10 mm</span>
+      </div>
+      <input type="range" id="cutter-depth" min="1" max="50" value="10" step="1" oninput="updateCutterDimensions()" style="width:100%;">
+    </div>
+    <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
+      <div style="display:flex; justify-content:space-between; font-size:10px; color:#475569;">
+        <span>カッター幅（mm）:</span>
+        <span id="cutter-size-val" style="color:#dc2626; font-weight:800;">8 mm</span>
+      </div>
+      <input type="range" id="cutter-size" min="2" max="40" value="8" step="1" oninput="updateCutterDimensions()" style="width:100%;">
+    </div>
+    <div style="display:flex; gap:6px; width:100%; margin-top:4px;">
+      <button onclick="execute3DCutout()" class="btn btn-danger" style="flex: 1 1 0%; font-weight: 800;"><i class="fa-solid fa-scissors"></i> くり抜き実行</button> 
+      <button onclick="cancelCutter()" class="btn" style="flex: 1 1 0%;">キャンセル</button>
+    </div>
+   </div>
+
+   <!-- BOTTOM MAIN NAVIGATION -->
+   <div id="bottom-nav" class="glass-panel">
+    <div id="sub-toolbar" class="tab-group"></div>
+    <div class="tab-group">
+      <button id="tab-select" onclick="switchCategory('SELECT')" class="tab-btn active"><i class="fa-solid fa-hand-pointer" style="color:#d97706;"></i> 選択</button>
+      <button id="tab-move" onclick="switchCategory('MOVE')" class="tab-btn"><i class="fa-solid fa-arrows-up-down-left-right" style="color:#8b5cf6;"></i> 移動・変形</button>
+      <button id="tab-join" onclick="switchCategory('JOIN')" class="tab-btn"><i class="fa-solid fa-link" style="color:#2563eb;"></i> 結合</button>
+      <button id="tab-draw" onclick="switchCategory('DRAW')" class="tab-btn"><i class="fa-solid fa-pen-ruler" style="color:#0284c7;"></i> スケッチ(作成)</button>
+      <button id="tab-cutout" onclick="switchCategory('CUTOUT')" class="tab-btn"><i class="fa-solid fa-scissors" style="color:#dc2626;"></i> 切り取り</button>
+      <button id="tab-add" onclick="switchCategory('ADD')" class="tab-btn"><i class="fa-solid fa-cubes" style="color:#059669;"></i> 形状配置</button>
+      <button id="tab-style" onclick="switchCategory('STYLE')" class="tab-btn"><i class="fa-solid fa-palette" style="color:#ec4899;"></i> カラー・削除</button>
+      <button id="tab-view" onclick="switchCategory('VIEW')" class="tab-btn"><i class="fa-solid fa-eye" style="color:#2563eb;"></i> 視点変更</button>
+    </div>
+   </div>
+  </div>
+
+  <script>
+    // --- STANDALONE CSG (CONSTRUCTIVE SOLID GEOMETRY) ENGINE ---
+    class CSGVector {
+        constructor(x=0, y=0, z=0) { this.x = x; this.y = y; this.z = z; }
+        clone() { return new CSGVector(this.x, this.y, this.z); }
+        negate() { return new CSGVector(-this.x, -this.y, -this.z); }
+        add(a) { return new CSGVector(this.x + a.x, this.y + a.y, this.z + a.z); }
+        sub(a) { return new CSGVector(this.x - a.x, this.y - a.y, this.z - a.z); }
+        multiplyScalar(a) { return new CSGVector(this.x * a, this.y * a, this.z * a); }
+        divideScalar(a) { return new CSGVector(this.x / a, this.y / a, this.z / a); }
+        lerp(a, t) { return this.add(a.sub(this).multiplyScalar(t)); }
+        dot(a) { return this.x * a.x + this.y * a.y + this.z * a.z; }
+        cross(a) { return new CSGVector(this.y * a.z - this.z * a.y, this.z * a.x - this.x * a.z, this.x * a.y - this.y * a.x); }
+        length() { return Math.sqrt(this.dot(this)); }
+        normalize() { return this.divideScalar(this.length() || 1); }
+    }
+
+    class CSGVertex {
+        constructor(pos, normal, uv) {
+            this.pos = pos;
+            this.normal = normal || new CSGVector();
+            this.uv = uv || new CSGVector();
+        }
+        clone() { return new CSGVertex(this.pos.clone(), this.normal.clone(), this.uv.clone()); }
+        flip() { this.normal = this.normal.negate(); }
+        interpolate(other, t) {
+            return new CSGVertex(this.pos.lerp(other.pos, t), this.normal.lerp(other.normal, t), this.uv.lerp(other.uv, t));
+        }
+    }
+
+    class CSGPlane {
+        constructor(normal, w) { this.normal = normal; this.w = w; }
+        static fromPoints(a, b, c) {
+            const n = b.sub(a).cross(c.sub(a)).normalize();
+            return new CSGPlane(n, n.dot(a));
+        }
+        clone() { return new CSGPlane(this.normal.clone(), this.w); }
+        flip() { this.normal = this.normal.negate(); this.w = -this.w; }
+        splitPolygon(polygon, coplanarFront, coplanarBack, front, back) {
+            const COPLANAR = 0, FRONT = 1, BACK = 2, SPANNING = 3;
+            const EPSILON = 1e-4;
+            let polygonType = 0;
+            const types = [];
+            for (let i = 0; i < polygon.vertices.length; i++) {
+                const t = this.normal.dot(polygon.vertices[i].pos) - this.w;
+                const type = (t < -EPSILON) ? BACK : (t > EPSILON) ? FRONT : COPLANAR;
+                polygonType |= type;
+                types.push(type);
+            }
+            switch (polygonType) {
+                case COPLANAR:
+                    (this.normal.dot(polygon.plane.normal) > 0 ? coplanarFront : coplanarBack).push(polygon);
+                    break;
+                case FRONT:
+                    front.push(polygon);
+                    break;
+                case BACK:
+                    back.push(polygon);
+                    break;
+                case SPANNING: {
+                    const f = [], b = [];
+                    for (let i = 0; i < polygon.vertices.length; i++) {
+                        const j = (i + 1) % polygon.vertices.length;
+                        const ti = types[i], tj = types[j];
+                        const vi = polygon.vertices[i], vj = polygon.vertices[j];
+                        if (ti !== BACK) f.push(vi);
+                        if (ti !== FRONT) b.push(ti !== BACK ? vi.clone() : vi);
+                        if ((ti | tj) === SPANNING) {
+                            const t = (this.w - this.normal.dot(vi.pos)) / this.normal.dot(vj.pos.sub(vi.pos));
+                            const v = vi.interpolate(vj, t);
+                            f.push(v);
+                            b.push(v.clone());
+                        }
+                    }
+                    if (f.length >= 3) front.push(new CSGPolygon(f, polygon.shared));
+                    if (b.length >= 3) back.push(new CSGPolygon(b, polygon.shared));
+                    break;
+                }
+            }
+        }
+    }
+
+    class CSGPolygon {
+        constructor(vertices, shared) {
+            this.vertices = vertices;
+            this.shared = shared;
+            this.plane = CSGPlane.fromPoints(vertices[0].pos, vertices[1].pos, vertices[2].pos);
+        }
+        clone() { return new CSGPolygon(this.vertices.map(v => v.clone()), this.shared); }
+        flip() {
+            this.vertices.reverse().forEach(v => v.flip());
+            this.plane.flip();
+        }
+    }
+
+    class CSGNode {
+        constructor(polygons) {
+            this.plane = null;
+            this.front = null;
+            this.back = null;
+            this.polygons = [];
+            if (polygons) this.build(polygons);
+        }
+        clone() {
+            const node = new CSGNode();
+            node.plane = this.plane && this.plane.clone();
+            node.front = this.front && this.front.clone();
+            node.back = this.back && this.back.clone();
+            node.polygons = this.polygons.map(p => p.clone());
+            return node;
+        }
+        invert() {
+            for (let i = 0; i < this.polygons.length; i++) this.polygons[i].flip();
+            if (this.plane) this.plane.flip();
+            if (this.front) this.front.invert();
+            if (this.back) this.back.invert();
+            const temp = this.front;
+            this.front = this.back;
+            this.back = temp;
+        }
+        clipPolygons(polygons) {
+            if (!this.plane) return polygons.slice();
+            let front = [], back = [];
+            for (let i = 0; i < polygons.length; i++) {
+                this.plane.splitPolygon(polygons[i], front, back, front, back);
+            }
+            if (this.front) front = this.front.clipPolygons(front);
+            if (this.back) back = this.back.clipPolygons(back);
+            else back = [];
+            return front.concat(back);
+        }
+        clipTo(num) {
+            this.polygons = num.clipPolygons(this.polygons);
+            if (this.front) this.front.clipTo(num);
+            if (this.back) this.back.clipTo(num);
+        }
+        allPolygons() {
+            let polygons = this.polygons.slice();
+            if (this.front) polygons = polygons.concat(this.front.allPolygons());
+            if (this.back) polygons = polygons.concat(this.back.allPolygons());
+            return polygons;
+        }
+        build(polygons) {
+            if (!polygons.length) return;
+            if (!this.plane) this.plane = polygons[0].plane.clone();
+            const front = [], back = [];
+            for (let i = 0; i < polygons.length; i++) {
+                this.plane.splitPolygon(polygons[i], this.polygons, this.polygons, front, back);
+            }
+            if (front.length) {
+                if (!this.front) this.front = new CSGNode();
+                this.front.build(front);
+            }
+            if (back.length) {
+                if (!this.back) this.back = new CSGNode();
+                this.back.build(back);
+            }
+        }
+    }
+
+    class CSG {
+        constructor() { this.polygons = []; }
+        clone() {
+            const csg = new CSG();
+            csg.polygons = this.polygons.map(p => p.clone());
+            return csg;
+        }
+        toPolygons() { return this.polygons; }
+        subtract(csg) {
+            const a = new CSGNode(this.clone().polygons);
+            const b = new CSGNode(csg.clone().polygons);
+            a.invert();
+            a.clipTo(b);
+            b.clipTo(a);
+            b.invert();
+            b.clipTo(a);
+            b.invert();
+            a.build(b.allPolygons());
+            a.invert();
+            return CSG.fromPolygons(a.allPolygons());
+        }
+        static fromPolygons(polygons) {
+            const csg = new CSG();
+            csg.polygons = polygons;
+            return csg;
+        }
+        static fromMesh(mesh) {
+            mesh.updateMatrixWorld(true);
+            const matrixWorld = mesh.matrixWorld;
+            const geom = mesh.geometry.isBufferGeometry ? mesh.geometry.toNonIndexed() : mesh.geometry;
+            const posAttr = geom.attributes.position;
+            const normAttr = geom.attributes.normal;
+            const uvAttr = geom.attributes.uv;
+
+            const polygons = [];
+            for (let i = 0; i < posAttr.count; i += 3) {
+                const vertices = [];
+                for (let j = 0; j < 3; j++) {
+                    const idx = i + j;
+                    const p = new THREE.Vector3(posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx)).applyMatrix4(matrixWorld);
+                    let n = new THREE.Vector3(0, 1, 0);
+                    if (normAttr) {
+                        const normalMatrix = new THREE.Matrix3().getNormalMatrix(matrixWorld);
+                        n = new THREE.Vector3(normAttr.getX(idx), normAttr.getY(idx), normAttr.getZ(idx)).applyMatrix3(normalMatrix).normalize();
+                    }
+                    let uv = new THREE.Vector3(0, 0, 0);
+                    if (uvAttr) {
+                        uv = new THREE.Vector3(uvAttr.getX(idx), uvAttr.getY(idx), 0);
+                    }
+                    vertices.push(new CSGVertex(new CSGVector(p.x, p.y, p.z), new CSGVector(n.x, n.y, n.z), new CSGVector(uv.x, uv.y, uv.z)));
+                }
+                if (vertices.length >= 3) {
+                    polygons.push(new CSGPolygon(vertices));
+                }
+            }
+            return CSG.fromPolygons(polygons);
+        }
+        static toMesh(csg, targetMatrix, targetMaterial) {
+            const polygons = csg.toPolygons();
+            const positions = [];
+            const normals = [];
+            const uvs = [];
+
+            const invMatrix = targetMatrix ? targetMatrix.clone().invert() : new THREE.Matrix4();
+
+            for (let i = 0; i < polygons.length; i++) {
+                const poly = polygons[i];
+                for (let j = 2; j < poly.vertices.length; j++) {
+                    const verts = [poly.vertices[0], poly.vertices[j - 1], poly.vertices[j]];
+                    for (let k = 0; k < 3; k++) {
+                        const v = verts[k];
+                        const p = new THREE.Vector3(v.pos.x, v.pos.y, v.pos.z).applyMatrix4(invMatrix);
+                        positions.push(p.x, p.y, p.z);
+                        normals.push(v.normal.x, v.normal.y, v.normal.z);
+                        uvs.push(v.uv.x, v.uv.y);
+                    }
+                }
+            }
+
+            const geom = new THREE.BufferGeometry();
+            geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geom.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+            geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+
+            const mat = targetMaterial ? targetMaterial.clone() : new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.35, metalness: 0.1 });
+            const mesh = new THREE.Mesh(geom, mat);
+            if (targetMatrix) {
+                mesh.applyMatrix4(targetMatrix);
+            }
+            return mesh;
+        }
+    }
+
+    // --- GLOBAL VARIABLES ---
+    let scene, camera, renderer, controls, transformControls;
+    let objects = [];
+    let selectedObject = null;
+    let activeCategory = 'SELECT';
+    let currentDrawType = 'RECT';
+    let cutoutSubMode = '3D';
+    let snapStep = 1.0;
+    let currentGizmoMode = 'translate';
+    let isCameraLocked = false;
+    let isSketchTransparentMode = false;
+
+    let joinStepState = 'IDLE';
+    let snapToSurfaceEnabled = false;
+
+    // 2D Sketch Extrude State
+    let sketchPoints = [];
+    let sketchPreviewMesh = null;
+    let sketchDots = [];
+    let snapCursorMesh = null;
+    let pending2DShape = null;
+    let selectionOutlineMesh = null;
+
+    // 3D Cutter State
+    let activeCutterMesh = null;
+    let activeCutterType = 'box';
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    let raycastGridPlane;
+    let pointerDownPos = { x: 0, y: 0 };
+
+    const undoStack = [];
+    const redoStack = [];
+    let isRestoringState = false;
+
+    // --- INITIALIZATION ---
+    window.addEventListener('DOMContentLoaded', () => {
+        initEngine();
+        initListeners();
+        switchCategory('SELECT');
+        animate();
+
+        setTimeout(onWindowResize, 100);
+        setTimeout(onWindowResize, 500);
+
+        if (window.ResizeObserver) {
+            new ResizeObserver(onWindowResize).observe(document.getElementById('canvas-container'));
+        }
+
+        showToast('3D CAD 起動完了', 'info');
+    });
+
+    function initEngine() {
+        const container = document.getElementById('canvas-container');
+
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf1f5f9);
+
+        camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(38, 32, 48);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        renderer.shadowMap.enabled = false;
+        container.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+        scene.add(ambientLight);
+
+        const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.7);
+        dirLight1.position.set(40, 60, 30);
+        scene.add(dirLight1);
+
+        const dirLight2 = new THREE.DirectionalLight(0x0284c7, 0.3);
+        dirLight2.position.set(-30, -10, -30);
+        scene.add(dirLight2);
+
+        // Grid Floor (Light Theme)
+        const planeGridHelper = new THREE.GridHelper(100, 50, 0x94a3b8, 0xcbd5e1);
+        scene.add(planeGridHelper);
+
+        // Raycast Plane
+        const planeGeo = new THREE.PlaneGeometry(500, 500);
+        const planeMat = new THREE.MeshBasicMaterial({ visible: false });
+        raycastGridPlane = new THREE.Mesh(planeGeo, planeMat);
+        raycastGridPlane.rotation.x = -Math.PI / 2;
+        scene.add(raycastGridPlane);
+
+        // Snap Cursor Marker
+        const snapGeo = new THREE.RingGeometry(0.4, 0.8, 16);
+        const snapMat = new THREE.MeshBasicMaterial({ color: 0xd97706, side: THREE.DoubleSide, depthTest: false });
+        snapCursorMesh = new THREE.Mesh(snapGeo, snapMat);
+        snapCursorMesh.renderOrder = 99999;
+        snapCursorMesh.visible = false;
+        scene.add(snapCursorMesh);
+
+        // Orbit & Transform Controls
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+
+        transformControls = new THREE.TransformControls(camera, renderer.domElement);
+        transformControls.size = 1.0;
+        transformControls.setTranslationSnap(1.0);
+        transformControls.setRotationSnap(THREE.MathUtils.degToRad(15));
+
+        transformControls.addEventListener('dragging-changed', (event) => {
+            controls.enabled = !event.value && !isCameraLocked;
+            if (!event.value) {
+                updateSelectionOutline();
+                updateCoordInputUI();
+                saveState();
+            }
+        });
+
+        transformControls.addEventListener('change', () => {
+            if (transformControls.dragging) {
+                updateCoordInputUI();
+                updateSelectionOutline();
+            }
+        });
+
+        scene.add(transformControls);
+
+        createInitialSampleObjects();
+    }
+
+    function createInitialSampleObjects() {
+        const geo1 = new THREE.BoxGeometry(12, 12, 12);
+        const mat1 = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.3, metalness: 0.1, transparent: true, opacity: 1.0 });
+        const mesh1 = new THREE.Mesh(geo1, mat1);
+        mesh1.position.set(-8, 6, 0);
+        mesh1.userData = { name: "立方体モデル", type: "box", params: { width: 12, height: 12, depth: 12 } };
+        scene.add(mesh1);
+        objects.push(mesh1);
+
+        const geo2 = new THREE.CylinderGeometry(5, 5, 14, 24);
+        const mat2 = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.3, metalness: 0.1, transparent: true, opacity: 1.0 });
+        const mesh2 = new THREE.Mesh(geo2, mat2);
+        mesh2.position.set(8, 7, 0);
+        mesh2.userData = { name: "円柱モデル", type: "cylinder", params: { rt: 5, rb: 5, h: 14 } };
+        scene.add(mesh2);
+        objects.push(mesh2);
+
+        updateObjectDropdown();
+        selectObject(mesh1);
+        saveState();
+    }
+
+    function initListeners() {
+        window.addEventListener('resize', onWindowResize);
+        const canvas = renderer.domElement;
+
+        canvas.addEventListener('pointerdown', (e) => {
+            pointerDownPos = { x: e.clientX, y: e.clientY };
+        });
+
+        canvas.addEventListener('pointerup', (e) => {
+            const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+            if (dist < 8) handleTapSelection(e);
+        });
+
+        canvas.addEventListener('pointermove', onPointerMove);
+        canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
+
+    function onWindowResize() {
+        const container = document.getElementById('canvas-container');
+        if (!container) return;
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        if (w === 0 || h === 0) return;
+
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+    }
+
+    // --- 📱 iPad対応版 DOWNLOAD HELPER ---
+    async function helperDownloadBlob(blob, fileName) {
+        const file = new File([blob], fileName, { type: blob.type || 'application/octet-stream' });
+
+        // 方法1: Web Share API (iPadOS 15+ で最も確実に共有・ファイル保存できる機能)
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({
+                    files: [file],
+                    title: fileName,
+                });
+                showToast('📤 ファイルを共有・保存しました', 'info');
+                return;
+            } catch (err) {
+                if (err.name === 'AbortError') return; // ユーザーキャンセル時
+            }
+        }
+
+        // 方法2: Data URL 変換 (iOS Safariでの Blob URL ブロック回避)
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const dataUrl = e.target.result;
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('💾 ダウンロードを開始しました', 'info');
+        };
+        reader.readAsDataURL(blob);
+    }
+
+    function saveProjectFile() {
+        if (objects.length === 0) {
+            showToast('⚠️ 保存するモデルがありません', 'info');
+            return;
+        }
+        const snapshot = objects.map(obj => serializeObject(obj));
+        const jsonStr = JSON.stringify(snapshot, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        helperDownloadBlob(blob, '3d-cad-project.json');
+    }
+
+    function loadProjectFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const jsonStr = e.target.result;
+                restoreFromSnapshot(jsonStr);
+                saveState();
+                showToast('📂 プロジェクトを読み込みました！再編集が可能です', 'info');
+            } catch (err) {
+                console.error(err);
+                showToast('⚠️ ファイルの読み込みに失敗しました', 'info');
+            }
+            event.target.value = '';
+        };
+        reader.readAsText(file);
+    }
+
+    function exportSTL(targetOnly = false) {
+        if (typeof THREE.STLExporter === 'undefined') {
+            showToast('⚠️ STLExporterが読み込まれていません', 'info');
+            return;
+        }
+        
+        const exporter = new THREE.STLExporter();
+        let exportObject;
+
+        if (targetOnly && selectedObject) {
+            exportObject = selectedObject;
+        } else {
+            const visibleObjs = objects.filter(o => o.visible !== false);
+            if (visibleObjs.length === 0) {
+                showToast('⚠️ 出力する3Dモデルがありません', 'info');
+                return;
+            }
+            const group = new THREE.Group();
+            visibleObjs.forEach(obj => group.add(obj.clone(true)));
+            exportObject = group;
+        }
+
+        try {
+            const result = exporter.parse(exportObject, { binary: true });
+            const blob = new Blob([result], { type: 'application/octet-stream' });
+            const fileName = (targetOnly && selectedObject) 
+                ? `${selectedObject.userData.name || 'model'}.stl` 
+                : '3d-cad-model.stl';
+            
+            helperDownloadBlob(blob, fileName);
+        } catch (err) {
+            console.error("STL Export error:", err);
+            showToast('⚠️ STL出力に失敗しました', 'info');
+        }
+    }
+
+    // --- CAMERA LOCK & DISPLAY CONTROL ---
+    function toggleCameraLock() {
+        isCameraLocked = !isCameraLocked;
+        controls.enabled = !isCameraLocked;
+        const btn = document.getElementById('btn-lock-view');
+        
+        if (isCameraLocked) {
+            btn.style.background = '#dc2626';
+            btn.style.color = '#ffffff';
+            btn.innerHTML = `<i class="fa-solid fa-lock" id="icon-lock-view"></i>`;
+            showToast('🔒 視点操作を固定しました', 'info');
+        } else {
+            btn.style.background = '#ffffff';
+            btn.style.color = '#1e293b';
+            btn.innerHTML = `<i class="fa-solid fa-unlock" id="icon-lock-view"></i>`;
+            showToast('🔓 視点操作を解除しました', 'info');
+        }
+    }
+
+    function hideSelectedObject() {
+        if (!selectedObject) return;
+        selectedObject.visible = false;
+        const name = selectedObject.userData.name || 'モデル';
+        deselectObject();
+        updateObjectDropdown();
+        saveState();
+        showToast(`👁️‍🗨️ 「${name}」を非表示にしました`, 'info');
+    }
+
+    function showAllObjects() {
+        let count = 0;
+        objects.forEach(obj => {
+            if (!obj.visible) {
+                obj.visible = true;
+                count++;
+            }
+        });
+        updateObjectDropdown();
+        saveState();
+        showToast(`👁️ ${count}個の非表示モデルをすべて再表示しました`, 'info');
+    }
+
+    function setSketchModelTransparency(enable) {
+        isSketchTransparentMode = enable;
+        objects.forEach(obj => {
+            obj.traverse(child => {
+                if (child.material) {
+                    const mats = Array.isArray(child.material) ? child.material : [child.material];
+                    mats.forEach(m => {
+                        m.transparent = true;
+                        m.opacity = enable ? 0.35 : 1.0;
+                        m.depthWrite = !enable;
+                    });
+                }
+            });
+        });
+    }
+
+    function toggleManualTransparency() {
+        setSketchModelTransparency(!isSketchTransparentMode);
+        showToast(isSketchTransparentMode ? '👻 モデルを半透明化しました' : '👁️ モデルを不透明に戻しました', 'info');
+    }
+
+    // --- UNDO / REDO & SERIALIZATION ---
+    function serializeObject(obj) {
+        if (obj.isGroup) {
+            return {
+                isGroup: true,
+                name: obj.userData.name || 'グループ',
+                visible: obj.visible !== false,
+                position: obj.position.toArray(),
+                rotation: [obj.rotation.x, obj.rotation.y, obj.rotation.z],
+                scale: obj.scale.toArray(),
+                children: obj.children.map(child => serializeObject(child))
+            };
+        }
+
+        if (obj.userData.type === 'custom_csg' || !['box', 'cylinder', 'sphere', 'cone', 'extruded'].includes(obj.userData.type)) {
+            const posAttr = obj.geometry.attributes.position;
+            const normAttr = obj.geometry.attributes.normal;
+            const uvAttr = obj.geometry.attributes.uv;
+            return {
+                isGroup: false,
+                name: obj.userData.name || '切り取りモデル',
+                type: 'custom_csg',
+                visible: obj.visible !== false,
+                color: obj.material && obj.material.color ? obj.material.color.getHex() : 0x0284c7,
+                position: obj.position.toArray(),
+                rotation: [obj.rotation.x, obj.rotation.y, obj.rotation.z],
+                scale: obj.scale.toArray(),
+                geometryData: {
+                    position: Array.from(posAttr.array),
+                    normal: normAttr ? Array.from(normAttr.array) : null,
+                    uv: uvAttr ? Array.from(uvAttr.array) : null
+                }
+            };
+        }
+
+        return {
+            isGroup: false,
+            name: obj.userData.name || 'モデル',
+            type: obj.userData.type || 'box',
+            visible: obj.visible !== false,
+            color: obj.material && obj.material.color ? obj.material.color.getHex() : 0x0284c7,
+            position: obj.position.toArray(),
+            rotation: [obj.rotation.x, obj.rotation.y, obj.rotation.z],
+            scale: obj.scale.toArray(),
+            params: obj.userData.params || {},
+            sketchShapeData: obj.userData.sketchShapeData || null
+        };
+    }
+
+    function buildMeshFromData(data) {
+        if (data.isGroup) {
+            const group = new THREE.Group();
+            group.position.fromArray(data.position);
+            group.rotation.set(...data.rotation);
+            group.scale.fromArray(data.scale);
+            group.visible = data.visible !== false;
+            group.userData = { name: data.name, isJoinedGroup: true };
+            data.children.forEach(childData => {
+                const childMesh = buildMeshFromData(childData);
+                group.add(childMesh);
+            });
+            return group;
+        }
+
+        let geo;
+        const type = data.type;
+        const params = data.params || {};
+
+        if (type === 'custom_csg' && data.geometryData) {
+            geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(data.geometryData.position, 3));
+            if (data.geometryData.normal) {
+                geo.setAttribute('normal', new THREE.Float32BufferAttribute(data.geometryData.normal, 3));
+            } else {
+                geo.computeVertexNormals();
+            }
+            if (data.geometryData.uv) {
+                geo.setAttribute('uv', new THREE.Float32BufferAttribute(data.geometryData.uv, 2));
+            }
+        } else if (type === 'box') geo = new THREE.BoxGeometry(params.width || 10, params.height || 10, params.depth || 10);
+        else if (type === 'cylinder') geo = new THREE.CylinderGeometry(params.rt || 5, params.rb || 5, params.h || 12, 24);
+        else if (type === 'sphere') geo = new THREE.SphereGeometry(params.r || 6, 24, 24);
+        else if (type === 'cone') geo = new THREE.ConeGeometry(params.r || 6, params.h || 12, 24);
+        else if (type === 'extruded' && data.sketchShapeData) {
+            const shape = buildShapeFromData(data.sketchShapeData);
+            geo = new THREE.ExtrudeGeometry(shape, { depth: params.height || 20, bevelEnabled: false });
+            geo.rotateX(-Math.PI / 2);
+        } else {
+            geo = new THREE.BoxGeometry(10, 10, 10);
+        }
+
+        const mat = new THREE.MeshStandardMaterial({
+            color: data.color !== undefined ? data.color : 0x0284c7,
+            roughness: 0.35,
+            metalness: 0.1,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 1.0
+        });
+
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.fromArray(data.position);
+        mesh.rotation.set(...data.rotation);
+        mesh.scale.fromArray(data.scale);
+        mesh.visible = data.visible !== false;
+        mesh.userData = {
+            name: data.name,
+            type: data.type,
+            params: data.params,
+            sketchShapeData: data.sketchShapeData
+        };
+        return mesh;
+    }
+
+    function saveState() {
+        if (isRestoringState) return;
+        const snapshot = objects.map(obj => serializeObject(obj));
+        undoStack.push(JSON.stringify(snapshot));
+        if (undoStack.length > 30) undoStack.shift();
+        redoStack.length = 0;
+    }
+
+    function restoreFromSnapshot(jsonStr) {
+        isRestoringState = true;
+        deselectObject();
+        removeCutterObject();
+
+        objects.forEach(obj => {
+            scene.remove(obj);
+            disposeObjectResources(obj);
+        });
+        objects = [];
+
+        const snapshot = JSON.parse(jsonStr);
+        snapshot.forEach(data => {
+            const restoredMesh = buildMeshFromData(data);
+            scene.add(restoredMesh);
+            objects.push(restoredMesh);
+        });
+
+        updateObjectDropdown();
+        isRestoringState = false;
+    }
+
+    function undo() {
+        if (undoStack.length <= 1) {
+            showToast('これ以上戻せません', 'info');
+            return;
+        }
+        const current = undoStack.pop();
+        redoStack.push(current);
+        const previous = undoStack[undoStack.length - 1];
+        restoreFromSnapshot(previous);
+        showToast('元に戻しました', 'info');
+    }
+
+    function redo() {
+        if (redoStack.length === 0) {
+            showToast('やり直す操作がありません', 'info');
+            return;
+        }
+        const snapshot = redoStack.pop();
+        undoStack.push(snapshot);
+        restoreFromSnapshot(snapshot);
+        showToast('やり直しました', 'info');
+    }
+
+    function clearAllObjects() {
+        if (objects.length === 0) return;
+        deselectObject();
+        removeCutterObject();
+
+        objects.forEach(obj => {
+            scene.remove(obj);
+            disposeObjectResources(obj);
+        });
+        objects = [];
+        updateObjectDropdown();
+        saveState();
+        showToast('すべてのモデルを削除しました', 'info');
+    }
+
+    // --- NAVIGATION & CATEGORY SWITCHING ---
+    function updateObjectDropdown() {
+        const dropdown = document.getElementById('object-dropdown');
+        dropdown.innerHTML = '<option value="">📦 対象選択</option>';
+        objects.forEach((obj, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            const name = obj.userData.name || `モデル ${index + 1}`;
+            const isHidden = !obj.visible;
+            option.textContent = `${index + 1}. ${name}${isHidden ? ' [非表示]' : ''}`;
+            if (obj === selectedObject) option.selected = true;
+            dropdown.appendChild(option);
+        });
+    }
+
+    function onDropdownSelectObject(indexVal) {
+        if (indexVal === "" || indexVal === null) return;
+        const idx = parseInt(indexVal);
+        if (objects[idx]) {
+            if (!objects[idx].visible) {
+                objects[idx].visible = true;
+                showToast(`👁️ 「${objects[idx].userData.name || 'モデル'}」を再表示しました`, 'info');
+            }
+            selectObject(objects[idx]);
+        }
+    }
+
+    function updateSketchGuideBar() {
+        const guideText = document.getElementById('guide-bar');
+        if (activeCategory !== 'DRAW' && (activeCategory !== 'CUTOUT' || cutoutSubMode !== '2D')) return;
+
+        const isCut = (activeCategory === 'CUTOUT');
+        const prefix = isCut ? "✂️ 【スケッチ貫通切り取り】" : "✏️ ";
+
+        if (currentDrawType === 'RECT') {
+            guideText.textContent = sketchPoints.length === 0 
+                ? `${prefix}1つ目の角をタップしてください` 
+                : `${prefix}対角（2つ目の角）をタップして確定`;
+        } else if (currentDrawType === 'CIRCLE') {
+            guideText.textContent = sketchPoints.length === 0 
+                ? `${prefix}中心点をタップしてください` 
+                : `${prefix}半径の位置をタップして確定`;
+        } else if (currentDrawType === 'POLY') {
+            guideText.textContent = sketchPoints.length === 0 
+                ? `${prefix}最初の点をタップしてください` 
+                : `${prefix}次の頂点をタップ（${sketchPoints.length}点指定中 / 右上で完了）`;
+        }
+    }
+
+    function switchCategory(cat) {
+        activeCategory = cat;
+
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        const activeTab = document.getElementById(`tab-${cat.toLowerCase()}`);
+        if (activeTab) activeTab.classList.add('active');
+
+        const subPanel = document.getElementById('sub-toolbar');
+        const guideText = document.getElementById('guide-bar');
+
+        if (cat !== 'JOIN') joinStepState = 'IDLE';
+
+        if (cat === 'DRAW' || (cat === 'CUTOUT' && cutoutSubMode === '2D')) {
+            setSketchModelTransparency(true);
+        } else {
+            setSketchModelTransparency(false);
+        }
+
+        if (cat === 'SELECT') {
+            guideText.textContent = "💡 対象モデルをタップするか、リストから選択してください";
+            subPanel.innerHTML = `
+                <button onclick="copySelectedObject()" class="btn btn-gold"><i class="fa-solid fa-copy"></i> 複製</button>
+                <span style="font-size:11px; color:#d97706;">モデルをタップして選択</span>
+            `;
+            if (selectedObject) transformControls.attach(selectedObject);
+        } 
+        else if (cat === 'MOVE') {
+            if (!selectedObject) {
+                guideText.textContent = "⚠️ 最初にモデルを選択してください";
+                subPanel.innerHTML = `<span style="font-size:11px; color:#d97706;">モデルが未選択です</span>`;
+            } else {
+                guideText.textContent = "💡 矢印ドラッグまたは画面中央パネルの数値入力・回転ボタンで操作できます";
+                subPanel.innerHTML = `
+                    <button onclick="setGizmoMode('translate')" class="btn gizmo-btn ${currentGizmoMode==='translate'?'btn-primary':''}">移動</button>
+                    <button onclick="setGizmoMode('rotate')" class="btn gizmo-btn ${currentGizmoMode==='rotate'?'btn-primary':''}">回転</button>
+                    <button onclick="setGizmoMode('scale')" class="btn gizmo-btn ${currentGizmoMode==='scale'?'btn-primary':''}">拡大</button>
+                    <button onclick="copySelectedObject()" class="btn btn-gold"><i class="fa-solid fa-copy"></i> 複製</button>
+                `;
+                transformControls.attach(selectedObject);
+            }
+        }
+        else if (cat === 'JOIN') {
+            const isGroup = selectedObject && selectedObject.userData && selectedObject.userData.isJoinedGroup;
+            if (joinStepState === 'WAITING_SECOND_TARGET') {
+                guideText.textContent = "👉 結合する2つ目のモデルをタップしてください";
+                subPanel.innerHTML = `
+                    <span style="font-size:11px; color:#d97706;">2つ目をタップ...</span>
+                    <button onclick="cancelJoinMode()" class="btn">キャンセル</button>
+                `;
+            } else if (joinStepState === 'WAITING_MAGNET_SURFACE') {
+                guideText.textContent = "👉 吸着させる対象モデルの表面をタップしてください";
+                subPanel.innerHTML = `
+                    <span style="font-size:11px; color:#0284c7;">表面をタップ...</span>
+                    <button onclick="cancelJoinMode()" class="btn">キャンセル</button>
+                `;
+            } else if (!selectedObject) {
+                guideText.textContent = "💡 1つ目のモデルを選択してください";
+                subPanel.innerHTML = `<span style="font-size:11px; color:#2563eb;">モデルを選択してください</span>`;
+            } else {
+                guideText.textContent = "💡 グループ結合・解体・表面吸着を実行できます";
+                subPanel.innerHTML = `
+                    <button onclick="startJoinWorkflow()" class="btn btn-primary"><i class="fa-solid fa-link"></i> 結合</button>
+                    ${isGroup ? '<button onclick="ungroupSelected()" class="btn btn-warning"><i class="fa-solid fa-scissors"></i> 解体</button>' : ''}
+                    <button onclick="startMagnetSnapWorkflow()" class="btn"><i class="fa-solid fa-magnet"></i> 表面吸着</button>
+                `;
+            }
+        }
+        else if (cat === 'DRAW') {
+            subPanel.innerHTML = `
+                <button onclick="setDrawType('RECT')" class="btn ${currentDrawType==='RECT'?'btn-primary':''}">□ 四角形</button>
+                <button onclick="setDrawType('CIRCLE')" class="btn ${currentDrawType==='CIRCLE'?'btn-primary':''}">○ 円</button>
+                <button onclick="setDrawType('POLY')" class="btn ${currentDrawType==='POLY'?'btn-primary':''}">⬡ 多角形</button>
+                <button onclick="toggleManualTransparency()" class="btn" style="background:#e2e8f0; color:#334155;">👻 透過ON/OFF</button>
+            `;
+            deselectObject();
+            removeCutterObject();
+            focusTop2DView();
+            updateSketchGuideBar();
+        } 
+        else if (cat === 'CUTOUT') {
+            removeCutterObject();
+            if (cutoutSubMode === '3D') {
+                guideText.textContent = "✂️ 対象モデルを選択し、赤色カッターの深さとサイズを調整してくり抜きます";
+                subPanel.innerHTML = `
+                    <button onclick="setCutoutSubMode('3D')" class="btn btn-primary"><i class="fa-solid fa-cube"></i> 3D立体カッター</button>
+                    <button onclick="setCutoutSubMode('2D')" class="btn"><i class="fa-solid fa-pen"></i> 2Dスケッチ切り取り</button>
+                    <button onclick="spawnCutterForSelected('box')" class="btn btn-danger">立方体カッター</button>
+                    <button onclick="spawnCutterForSelected('cylinder')" class="btn btn-danger">円柱カッター</button>
+                `;
+                if (selectedObject && !activeCutterMesh) {
+                    spawnCutterForSelected('box');
+                }
+            } else {
+                subPanel.innerHTML = `
+                    <button onclick="setCutoutSubMode('3D')" class="btn"><i class="fa-solid fa-cube"></i> 3D立体カッター</button>
+                    <button onclick="setCutoutSubMode('2D')" class="btn btn-primary"><i class="fa-solid fa-pen"></i> 2Dスケッチ切り取り</button>
+                    <button onclick="setDrawType('RECT')" class="btn ${currentDrawType==='RECT'?'btn-primary':''}">□ 四角形</button>
+                    <button onclick="setDrawType('CIRCLE')" class="btn ${currentDrawType==='CIRCLE'?'btn-primary':''}">○ 円</button>
+                    <button onclick="setDrawType('POLY')" class="btn ${currentDrawType==='POLY'?'btn-primary':''}">⬡ 多角形</button>
+                `;
+                deselectObject();
+                focusTop2DView();
+                updateSketchGuideBar();
+            }
+        }
+        else if (cat === 'ADD') {
+            guideText.textContent = "💡 配置する3D基本形状を選択してください";
+            subPanel.innerHTML = `
+                <button onclick="addPrimitive('box')" class="btn btn-primary">立方体</button>
+                <button onclick="addPrimitive('cylinder')" class="btn btn-success">円柱</button>
+                <button onclick="addPrimitive('sphere')" class="btn btn-warning">球体</button>
+                <button onclick="addPrimitive('cone')" class="btn">円錐</button>
+                <button onclick="toggleMagnetSnapSetting()" class="btn ${snapToSurfaceEnabled ? 'btn-primary' : ''}">
+                    面スナップ: ${snapToSurfaceEnabled ? 'ON' : 'OFF'}
+                </button>
+            `;
+            removeCutterObject();
+        } 
+        else if (cat === 'STYLE') {
+            removeCutterObject();
+            if (!selectedObject) {
+                guideText.textContent = "⚠️ 対象のモデルを選択してください";
+                subPanel.innerHTML = `<span style="font-size:11px; color:#d97706;">モデル未選択</span>`;
+            } else {
+                guideText.textContent = "💡 カラー変更・複製・削除を実行できます";
+                subPanel.innerHTML = `
+                    <span style="font-size:11px; color:#475569;">カラー:</span>
+                    <input type="color" id="obj-color" oninput="updateObjectColor()" style="width:22px; height:22px; border:none; background:none; cursor:pointer;">
+                    <button onclick="copySelectedObject()" class="btn btn-gold"><i class="fa-solid fa-copy"></i> 複製</button>
+                    <button onclick="deleteSelected()" class="btn btn-danger"><i class="fa-solid fa-trash"></i> 削除</button>
+                `;
+            }
+        } 
+        else if (cat === 'VIEW') {
+            removeCutterObject();
+            guideText.textContent = "💡 視点プリセットを選択するか画面をドラッグしてください";
+            subPanel.innerHTML = `
+                <button onclick="setViewPreset('iso')" class="btn">斜め</button>
+                <button onclick="setViewPreset('top')" class="btn">上面</button>
+                <button onclick="setViewPreset('front')" class="btn">正面</button>
+                <button onclick="setViewPreset('side')" class="btn">側面</button>
+            `;
+        }
+
+        if (cat !== 'DRAW' && (cat !== 'CUTOUT' || cutoutSubMode !== '2D')) {
+            snapCursorMesh.visible = false;
+            document.getElementById('poly-finish-btn').style.display = 'none';
+            clearSketchPreviews();
+            sketchPoints = [];
+        }
+
+        updateSelectionActionPanel();
+    }
+
+    function setCutoutSubMode(mode) {
+        cutoutSubMode = mode;
+        switchCategory('CUTOUT');
+    }
+
+    function setGizmoMode(mode) {
+        currentGizmoMode = mode;
+        if (transformControls) transformControls.setMode(mode);
+        document.querySelectorAll('.gizmo-btn').forEach(btn => {
+            if (btn.dataset.mode === mode) btn.classList.add('btn-primary');
+            else btn.classList.remove('btn-primary');
+        });
+    }
+
+    function setDrawType(type) {
+        currentDrawType = type;
+        clearSketchPreviews();
+        sketchPoints = [];
+        document.getElementById('poly-finish-btn').style.display = 'none';
+        if (activeCategory === 'CUTOUT') switchCategory('CUTOUT');
+        else switchCategory('DRAW');
+    }
+
+    function focusTop2DView() {
+        camera.position.set(0, 75, 0.001);
+        camera.lookAt(0, 0, 0);
+        controls.target.set(0, 0, 0);
+        controls.update();
+    }
+
+    function setViewPreset(preset) {
+        if (preset === 'iso') camera.position.set(38, 32, 48);
+        else if (preset === 'top') camera.position.set(0, 75, 0.001);
+        else if (preset === 'front') camera.position.set(0, 15, 75);
+        else if (preset === 'side') camera.position.set(75, 15, 0);
+        
+        camera.lookAt(0, 0, 0);
+        controls.target.set(0, 0, 0);
+        controls.update();
+        showToast(`視点変更: ${preset.toUpperCase()}`, 'info');
+    }
+
+    function toggleMagnetSnapSetting() {
+        snapToSurfaceEnabled = !snapToSurfaceEnabled;
+        switchCategory('ADD');
+        showToast(`面スナップ: ${snapToSurfaceEnabled ? 'ON' : 'OFF'}`, 'info');
+    }
+
+    // --- PRIMITIVE & OBJECT MANAGEMENT ---
+    function getRandomColor() {
+        const colors = [0x2563eb, 0x059669, 0xd97706, 0xec4899, 0x8b5cf6, 0x0284c7, 0xe11d48];
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    function addPrimitive(type) {
+        let geo, name, params;
+        const color = getRandomColor();
+
+        if (type === 'box') {
+            params = { width: 10, height: 10, depth: 10 };
+            geo = new THREE.BoxGeometry(10, 10, 10);
+            name = '立方体';
+        } else if (type === 'cylinder') {
+            params = { rt: 5, rb: 5, h: 12 };
+            geo = new THREE.CylinderGeometry(5, 5, 12, 24);
+            name = '円柱';
+        } else if (type === 'sphere') {
+            params = { r: 6 };
+            geo = new THREE.SphereGeometry(6, 24, 24);
+            name = '球体';
+        } else if (type === 'cone') {
+            params = { r: 6, h: 12 };
+            geo = new THREE.ConeGeometry(6, 12, 24);
+            name = '円錐';
+        }
+
+        const mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.35, metalness: 0.1, transparent: true, opacity: 1.0 });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(0, type === 'sphere' ? 6 : 6, 0);
+        mesh.userData = { name: name, type: type, params: params };
+
+        scene.add(mesh);
+        objects.push(mesh);
+        updateObjectDropdown();
+        selectObject(mesh);
+        saveState();
+        showToast(`${name} を追加しました`, 'info');
+    }
+
+    function disposeObjectResources(obj) {
+        if (!obj) return;
+        obj.traverse(child => {
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+                const materials = Array.isArray(child.material) ? child.material : [child.material];
+                materials.forEach(m => m.dispose && m.dispose());
+            }
+        });
+    }
+
+    function deleteSelected() {
+        if (!selectedObject) {
+            showToast('削除するモデルを選択してください', 'info');
+            return;
+        }
+        const target = selectedObject;
+        deselectObject();
+
+        scene.remove(target);
+        const index = objects.indexOf(target);
+        if (index !== -1) objects.splice(index, 1);
+        disposeObjectResources(target);
+
+        updateObjectDropdown();
+        saveState();
+        showToast('モデルを削除しました', 'info');
+    }
+
+    function copySelectedObject() {
+        if (!selectedObject) {
+            showToast('複製するモデルを選択してください', 'info');
+            return;
+        }
+        const clone = selectedObject.clone(true);
+        clone.position.x += 4;
+        clone.position.z += 4;
+        clone.userData = { ...selectedObject.userData, name: `${selectedObject.userData.name || 'モデル'} のコピー` };
+        scene.add(clone);
+        objects.push(clone);
+        updateObjectDropdown();
+        selectObject(clone);
+        saveState();
+        showToast('モデルを複製しました', 'info');
+    }
+
+    function updateObjectColor() {
+        if (!selectedObject) return;
+        const input = document.getElementById('obj-color') || document.getElementById('panel-color');
+        if (!input || !input.value) return;
+
+        const hexColor = parseInt(input.value.replace('#', '0x'));
+        selectedObject.traverse(child => {
+            if (child.material) {
+                const materials = Array.isArray(child.material) ? child.material : [child.material];
+                materials.forEach(m => m.color && m.color.setHex(hexColor));
+            }
+        });
+        saveState();
+    }
+
+    // --- COORD & ROTATION NUMERICAL CONTROLS ---
+    function updateCoordInputUI() {
+        if (!selectedObject) return;
+        const cx = document.getElementById('coord-x');
+        const cy = document.getElementById('coord-y');
+        const cz = document.getElementById('coord-z');
+        if (cx && cy && cz) {
+            cx.value = Math.round(selectedObject.position.x * 10) / 10;
+            cy.value = Math.round(selectedObject.position.y * 10) / 10;
+            cz.value = Math.round(selectedObject.position.z * 10) / 10;
+        }
+
+        const rx = document.getElementById('rot-x');
+        const ry = document.getElementById('rot-y');
+        const rz = document.getElementById('rot-z');
+        if (rx && ry && rz) {
+            rx.value = Math.round(THREE.MathUtils.radToDeg(selectedObject.rotation.x));
+            ry.value = Math.round(THREE.MathUtils.radToDeg(selectedObject.rotation.y));
+            rz.value = Math.round(THREE.MathUtils.radToDeg(selectedObject.rotation.z));
+        }
+    }
+
+    function onManualCoordInput() {
+        if (!selectedObject) return;
+        const cx = parseFloat(document.getElementById('coord-x').value);
+        const cy = parseFloat(document.getElementById('coord-y').value);
+        const cz = parseFloat(document.getElementById('coord-z').value);
+
+        if (!isNaN(cx)) selectedObject.position.x = cx;
+        if (!isNaN(cy)) selectedObject.position.y = cy;
+        if (!isNaN(cz)) selectedObject.position.z = cz;
+
+        updateSelectionOutline();
+        saveState();
+    }
+
+    function nudgeObject(axis, delta) {
+        if (!selectedObject) return;
+        selectedObject.position[axis] += delta;
+        updateCoordInputUI();
+        updateSelectionOutline();
+        saveState();
+    }
+
+    function onManualRotInput() {
+        if (!selectedObject) return;
+        const rx = parseFloat(document.getElementById('rot-x').value);
+        const ry = parseFloat(document.getElementById('rot-y').value);
+        const rz = parseFloat(document.getElementById('rot-z').value);
+
+        if (!isNaN(rx)) selectedObject.rotation.x = THREE.MathUtils.degToRad(rx);
+        if (!isNaN(ry)) selectedObject.rotation.y = THREE.MathUtils.degToRad(ry);
+        if (!isNaN(rz)) selectedObject.rotation.z = THREE.MathUtils.degToRad(rz);
+
+        updateSelectionOutline();
+        saveState();
+    }
+
+    function rotateObject(axis, degDelta) {
+        if (!selectedObject) return;
+        const radDelta = THREE.MathUtils.degToRad(degDelta);
+        selectedObject.rotation[axis] += radDelta;
+        updateCoordInputUI();
+        updateSelectionOutline();
+        saveState();
+    }
+
+    // --- JOIN & MAGNET SNAP WORKFLOW ---
+    function startJoinWorkflow() {
+        if (!selectedObject) return;
+        joinStepState = 'WAITING_SECOND_TARGET';
+        switchCategory('JOIN');
+    }
+
+    function startMagnetSnapWorkflow() {
+        if (!selectedObject) return;
+        joinStepState = 'WAITING_MAGNET_SURFACE';
+        switchCategory('JOIN');
+    }
+
+    function cancelJoinMode() {
+        joinStepState = 'IDLE';
+        switchCategory('JOIN');
+    }
+
+    function executeJoinObjects(obj1, obj2) {
+        const group = new THREE.Group();
+        
+        const pos1 = new THREE.Vector3();
+        const pos2 = new THREE.Vector3();
+        obj1.getWorldPosition(pos1);
+        obj2.getWorldPosition(pos2);
+        const center = pos1.clone().add(pos2).multiplyScalar(0.5);
+
+        group.position.copy(center);
+
+        scene.remove(obj1);
+        scene.remove(obj2);
+
+        obj1.position.sub(center);
+        obj2.position.sub(center);
+
+        group.add(obj1);
+        group.add(obj2);
+
+        group.userData = { name: "グループ結合モデル", isJoinedGroup: true };
+
+        scene.add(group);
+        
+        objects = objects.filter(o => o !== obj1 && o !== obj2);
+        objects.push(group);
+
+        joinStepState = 'IDLE';
+        updateObjectDropdown();
+        selectObject(group);
+        saveState();
+        showToast('2つのモデルをグループ結合しました', 'info');
+    }
+
+    function ungroupSelected() {
+        if (!selectedObject || !selectedObject.userData.isJoinedGroup) return;
+
+        const group = selectedObject;
+        deselectObject();
+
+        const children = [...group.children];
+        children.forEach(child => {
+            const worldPos = new THREE.Vector3();
+            const worldQuat = new THREE.Quaternion();
+            const worldScale = new THREE.Vector3();
+
+            child.getWorldPosition(worldPos);
+            child.getWorldQuaternion(worldQuat);
+            child.getWorldScale(worldScale);
+
+            group.remove(child);
+            child.position.copy(worldPos);
+            child.quaternion.copy(worldQuat);
+            child.scale.copy(worldScale);
+
+            scene.add(child);
+            objects.push(child);
+        });
+
+        scene.remove(group);
+        objects = objects.filter(o => o !== group);
+
+        updateObjectDropdown();
+        saveState();
+        showToast('グループを解体しました', 'info');
+    }
+
+    function snapObjectToSurface(movingObj, intersect) {
+        const point = intersect.point;
+        const normal = intersect.face.normal.clone().transformDirection(intersect.object.matrixWorld).normalize();
+
+        movingObj.position.copy(point).add(normal.clone().multiplyScalar(4));
+        movingObj.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), normal);
+
+        joinStepState = 'IDLE';
+        switchCategory('JOIN');
+        saveState();
+        showToast('モデルを表面に吸着しました', 'info');
+    }
+
+    // --- 3D CUTTER WORKFLOW ---
+    function spawnCutterForSelected(shapeType = 'box') {
+        if (!selectedObject) {
+            showToast('⚠️ 切り取る対象のモデルを選択してください', 'info');
+            return;
+        }
+
+        removeCutterObject();
+        activeCutterType = shapeType;
+
+        const bbox = new THREE.Box3().setFromObject(selectedObject);
+        const center = bbox.getCenter(new THREE.Vector3());
+        const size = bbox.getSize(new THREE.Vector3());
+
+        const initDepth = Math.round(size.y / 2) || 10;
+        const initSize = Math.round(Math.min(size.x, size.z) / 1.5) || 8;
+
+        document.getElementById('cutter-depth').value = initDepth;
+        document.getElementById('cutter-size').value = initSize;
+
+        createCutterMesh(center, initDepth, initSize);
+
+        const panel = document.getElementById('cutter-ctrl-panel');
+        if (panel) panel.style.display = 'flex';
+        updateCutterDimensions();
+        showToast('✂️ 赤色カッターを配置しました。スライダーで調整してください', 'info');
+    }
+
+    function createCutterMesh(centerPos, depth, width) {
+        let geo;
+        if (activeCutterType === 'cylinder') {
+            geo = new THREE.CylinderGeometry(width / 2, width / 2, depth, 24);
+        } else {
+            geo = new THREE.BoxGeometry(width, depth, width);
+        }
+
+        const mat = new THREE.MeshBasicMaterial({ color: 0xdc2626, transparent: true, opacity: 0.6, depthWrite: false });
+        activeCutterMesh = new THREE.Mesh(geo, mat);
+
+        const wireGeo = new THREE.WireframeGeometry(geo);
+        const wireMat = new THREE.LineBasicMaterial({ color: 0xef4444, linewidth: 2 });
+        const wireframe = new THREE.LineSegments(wireGeo, wireMat);
+        activeCutterMesh.add(wireframe);
+
+        const topY = new THREE.Box3().setFromObject(selectedObject).max.y;
+        activeCutterMesh.position.set(centerPos.x, topY - (depth / 2), centerPos.z);
+
+        scene.add(activeCutterMesh);
+    }
+
+    function updateCutterDimensions() {
+        if (!activeCutterMesh || !selectedObject) return;
+
+        const depth = Number(document.getElementById('cutter-depth').value) || 10;
+        const width = Number(document.getElementById('cutter-size').value) || 8;
+
+        document.getElementById('cutter-depth-val').textContent = `${depth} mm`;
+        document.getElementById('cutter-size-val').textContent = `${width} mm`;
+
+        activeCutterMesh.geometry.dispose();
+
+        let newGeo;
+        if (activeCutterType === 'cylinder') {
+            newGeo = new THREE.CylinderGeometry(width / 2, width / 2, depth, 24);
+        } else {
+            newGeo = new THREE.BoxGeometry(width, depth, width);
+        }
+        activeCutterMesh.geometry = newGeo;
+
+        if (activeCutterMesh.children[0]) {
+            activeCutterMesh.children[0].geometry.dispose();
+            activeCutterMesh.children[0].geometry = new THREE.WireframeGeometry(newGeo);
+        }
+
+        const bbox = new THREE.Box3().setFromObject(selectedObject);
+        activeCutterMesh.position.y = bbox.max.y - (depth / 2);
+    }
+
+    function execute3DCutout() {
+        if (!selectedObject || !activeCutterMesh) return;
+
+        showToast('✂️ モデルをくり抜き中...', 'info');
+
+        setTimeout(() => {
+            try {
+                const targetObj = selectedObject;
+                const csgTarget = CSG.fromMesh(targetObj);
+                const csgCutter = CSG.fromMesh(activeCutterMesh);
+
+                const csgResult = csgTarget.subtract(csgCutter);
+
+                const resultMesh = CSG.toMesh(csgResult, targetObj.matrixWorld, targetObj.material);
+                resultMesh.userData = {
+                    name: (targetObj.userData.name || 'モデル') + ' (くり抜き)',
+                    type: 'custom_csg'
+                };
+
+                removeCutterObject();
+                scene.remove(targetObj);
+                const idx = objects.indexOf(targetObj);
+                if (idx !== -1) objects.splice(idx, 1);
+                disposeObjectResources(targetObj);
+
+                scene.add(resultMesh);
+                objects.push(resultMesh);
+
+                selectObject(resultMesh);
+                updateObjectDropdown();
+                saveState();
+
+                document.getElementById('cutter-ctrl-panel').style.display = 'none';
+                showToast('✂️ くり抜きが完了しました！', 'info');
+            } catch (err) {
+                console.error("Cutout error: ", err);
+                showToast('⚠️ くり抜き処理に失敗しました', 'info');
+            }
+        }, 50);
+    }
+
+    function cancelCutter() {
+        removeCutterObject();
+        const panel = document.getElementById('cutter-ctrl-panel');
+        if (panel) panel.style.display = 'none';
+    }
+
+    function removeCutterObject() {
+        if (activeCutterMesh) {
+            scene.remove(activeCutterMesh);
+            disposeObjectResources(activeCutterMesh);
+            activeCutterMesh = null;
+        }
+        const panel = document.getElementById('cutter-ctrl-panel');
+        if (panel) panel.style.display = 'none';
+    }
+
+    // --- 2D SKETCH & TOUCH SELECTION ---
+    function getPlaneIntersectPoint(e) {
+        const container = document.getElementById('canvas-container');
+        const rect = container.getBoundingClientRect();
+        pointer.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
+        pointer.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
+
+        raycaster.setFromCamera(pointer, camera);
+        const intersects = raycaster.intersectObject(raycastGridPlane);
+        if (intersects.length > 0) return snapPointToGrid(intersects[0].point);
+        return null;
+    }
+
+    function snapPointToGrid(pt) {
+        let snapped = pt.clone();
+        snapped.x = Math.round(pt.x / snapStep) * snapStep;
+        snapped.z = Math.round(pt.z / snapStep) * snapStep;
+        return snapped;
+    }
+
+    function updateSnapCursor(pt) {
+        if (!pt || (activeCategory !== 'DRAW' && (activeCategory !== 'CUTOUT' || cutoutSubMode !== '2D'))) {
+            snapCursorMesh.visible = false;
+            return;
+        }
+        snapCursorMesh.visible = true;
+        snapCursorMesh.position.copy(pt);
+        snapCursorMesh.rotation.set(-Math.PI / 2, 0, 0);
+    }
+
+    function handleTapSelection(e) {
+        if (activeCategory === 'DRAW' || (activeCategory === 'CUTOUT' && cutoutSubMode === '2D')) {
+            const pt = getPlaneIntersectPoint(e);
+            if (!pt) return;
+
+            if (currentDrawType === 'RECT' || currentDrawType === 'CIRCLE') {
+                if (sketchPoints.length === 0) {
+                    sketchPoints.push(pt);
+                    addSketchDotMarker(pt);
+                    updateSketchGuideBar();
+                } else {
+                    sketchPoints.push(pt);
+                    finish2DSketch();
+                }
+            } else if (currentDrawType === 'POLY') {
+                sketchPoints.push(pt);
+                addSketchDotMarker(pt);
+                updatePolylinePreview();
+                document.getElementById('poly-finish-btn').style.display = 'block';
+                updateSketchGuideBar();
+            }
+        } 
+        else if (activeCategory === 'JOIN' && joinStepState === 'WAITING_SECOND_TARGET') {
+            const container = document.getElementById('canvas-container');
+            const rect = container.getBoundingClientRect();
+            pointer.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
+            pointer.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
+            raycaster.setFromCamera(pointer, camera);
+            const visibleObjs = objects.filter(o => o.visible !== false);
+            const intersects = raycaster.intersectObjects(visibleObjs, true);
+            if (intersects.length > 0) {
+                const targetTopObj = getTopLevelObject(intersects[0].object);
+                if (targetTopObj && targetTopObj !== selectedObject) {
+                    executeJoinObjects(selectedObject, targetTopObj);
+                }
+            }
+        }
+        else if (activeCategory === 'JOIN' && joinStepState === 'WAITING_MAGNET_SURFACE') {
+            const container = document.getElementById('canvas-container');
+            const rect = container.getBoundingClientRect();
+            pointer.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
+            pointer.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
+            raycaster.setFromCamera(pointer, camera);
+            const candidates = objects.filter(o => o !== selectedObject && o.visible !== false);
+            const intersects = raycaster.intersectObjects(candidates, true);
+            if (intersects.length > 0) snapObjectToSurface(selectedObject, intersects[0]);
+        }
+        else if (['SELECT', 'JOIN', 'MOVE', 'STYLE', 'CUTOUT'].includes(activeCategory)) {
+            if (transformControls.dragging) return;
+            const container = document.getElementById('canvas-container');
+            const rect = container.getBoundingClientRect();
+            pointer.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
+            pointer.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
+            raycaster.setFromCamera(pointer, camera);
+            
+            const visibleObjs = objects.filter(o => o.visible !== false);
+            const intersects = raycaster.intersectObjects(visibleObjs, true);
+            if (intersects.length > 0) {
+                const topObj = getTopLevelObject(intersects[0].object);
+                if (topObj) selectObject(topObj);
+            } else if (activeCategory === 'SELECT') {
+                deselectObject();
+            }
+        }
+    }
+
+    function onPointerMove(e) {
+        const pt = getPlaneIntersectPoint(e);
+        updateSnapCursor(pt);
+        if (!pt || sketchPoints.length === 0) return;
+        if (activeCategory !== 'DRAW' && (activeCategory !== 'CUTOUT' || cutoutSubMode !== '2D')) return;
+
+        if (currentDrawType === 'RECT') updateRectPreview(sketchPoints[0], pt);
+        else if (currentDrawType === 'CIRCLE') updateCirclePreview(sketchPoints[0], pt);
+        else if (currentDrawType === 'POLY') updatePolylinePreview(pt);
+    }
+
+    function addSketchDotMarker(pt) {
+        const dotGeo = new THREE.SphereGeometry(0.6, 12, 12);
+        const dotMat = new THREE.MeshBasicMaterial({ color: 0x0284c7, depthTest: false });
+        const dot = new THREE.Mesh(dotGeo, dotMat);
+        dot.renderOrder = 99999;
+        dot.position.copy(pt);
+        scene.add(dot);
+        sketchDots.push(dot);
+    }
+
+    function clearSketchPreviews() {
+        if (sketchPreviewMesh) {
+            scene.remove(sketchPreviewMesh);
+            if (sketchPreviewMesh.geometry) sketchPreviewMesh.geometry.dispose();
+            sketchPreviewMesh = null;
+        }
+        sketchDots.forEach(d => scene.remove(d));
+        sketchDots = [];
+    }
+
+    function updateRectPreview(p1, p2) {
+        if (sketchPreviewMesh) scene.remove(sketchPreviewMesh);
+        const pts = [p1, new THREE.Vector3(p2.x, p1.y, p1.z), p2, new THREE.Vector3(p1.x, p1.y, p2.z), p1];
+        const lineGeo = new THREE.BufferGeometry().setFromPoints(pts);
+        const lineMat = new THREE.LineBasicMaterial({ color: 0x0284c7, linewidth: 2, depthTest: false });
+        sketchPreviewMesh = new THREE.Line(lineGeo, lineMat);
+        sketchPreviewMesh.renderOrder = 99999;
+        scene.add(sketchPreviewMesh);
+    }
+
+    function updateCirclePreview(center, edgePt) {
+        if (sketchPreviewMesh) scene.remove(sketchPreviewMesh);
+        const radius = center.distanceTo(edgePt);
+        const pts = [];
+        for (let i = 0; i <= 32; i++) {
+            const theta = (i / 32) * Math.PI * 2;
+            pts.push(new THREE.Vector3(center.x + Math.cos(theta) * radius, center.y, center.z + Math.sin(theta) * radius));
+        }
+        const lineGeo = new THREE.BufferGeometry().setFromPoints(pts);
+        const lineMat = new THREE.LineBasicMaterial({ color: 0x0284c7, linewidth: 2, depthTest: false });
+        sketchPreviewMesh = new THREE.Line(lineGeo, lineMat);
+        sketchPreviewMesh.renderOrder = 99999;
+        scene.add(sketchPreviewMesh);
+    }
+
+    function updatePolylinePreview(currentPt = null) {
+        if (sketchPreviewMesh) scene.remove(sketchPreviewMesh);
+        const pts = [...sketchPoints];
+        if (currentPt) pts.push(currentPt);
+        const lineGeo = new THREE.BufferGeometry().setFromPoints(pts);
+        const lineMat = new THREE.LineBasicMaterial({ color: 0x0284c7, linewidth: 2, depthTest: false });
+        sketchPreviewMesh = new THREE.Line(lineGeo, lineMat);
+        sketchPreviewMesh.renderOrder = 99999;
+        scene.add(sketchPreviewMesh);
+    }
+
+    function buildShapeFromData(shapeData) {
+        const shape = new THREE.Shape();
+        if (shapeData.type === 'rect') {
+            const w = shapeData.w;
+            const d = shapeData.d;
+            shape.moveTo(0, 0);
+            shape.lineTo(w, 0);
+            shape.lineTo(w, -d);
+            shape.lineTo(0, -d);
+            shape.closePath();
+        } else if (shapeData.type === 'circle') {
+            shape.absarc(0, 0, shapeData.radius, 0, Math.PI * 2, false);
+        } else if (shapeData.type === 'poly') {
+            const pts = shapeData.points;
+            if (pts && pts.length > 0) {
+                shape.moveTo(pts[0].x, -pts[0].z);
+                for (let i = 1; i < pts.length; i++) {
+                    shape.lineTo(pts[i].x, -pts[i].z);
+                }
+                shape.closePath();
+            }
+        }
+        return shape;
+    }
+
+    function finish2DSketch() {
+        if (sketchPoints.length < 2) return;
+        const p1 = sketchPoints[0];
+        const p2 = sketchPoints[1];
+
+        let shapeData;
+        let origin = p1.clone();
+
+        if (currentDrawType === 'RECT') {
+            shapeData = { type: 'rect', w: p2.x - p1.x, d: p2.z - p1.z };
+        } else if (currentDrawType === 'CIRCLE') {
+            const radius = p1.distanceTo(p2);
+            shapeData = { type: 'circle', radius: radius };
+        }
+
+        if (activeCategory === 'CUTOUT' && cutoutSubMode === '2D') {
+            execute2DSketchCutout(shapeData, origin);
+        } else {
+            beginExtrudeProcess(shapeData, origin);
+        }
+    }
+
+    function finishPolylineSketch() {
+        if (sketchPoints.length < 3) return;
+        const origin = sketchPoints[0].clone();
+        const relativePts = sketchPoints.map(p => ({ x: p.x - origin.x, z: p.z - origin.z }));
+        const shapeData = { type: 'poly', points: relativePts };
+
+        if (activeCategory === 'CUTOUT' && cutoutSubMode === '2D') {
+            execute2DSketchCutout(shapeData, origin);
+        } else {
+            beginExtrudeProcess(shapeData, origin);
+        }
+    }
+
+    function execute2DSketchCutout(shapeData, origin) {
+        clearSketchPreviews();
+        sketchPoints = [];
+        document.getElementById('poly-finish-btn').style.display = 'none';
+
+        let targetObj = selectedObject;
+
+        if (!targetObj) {
+            let centerX = origin.x;
+            let centerZ = origin.z;
+            if (shapeData.type === 'rect') {
+                centerX += shapeData.w / 2;
+                centerZ += shapeData.d / 2;
+            } else if (shapeData.type === 'poly' && shapeData.points) {
+                let sumX = 0, sumZ = 0;
+                shapeData.points.forEach(p => { sumX += p.x; sumZ += p.z; });
+                centerX = origin.x + sumX / shapeData.points.length;
+                centerZ = origin.z + sumZ / shapeData.points.length;
+            }
+
+            const visibleObjs = objects.filter(o => o.visible !== false);
+            const rayDown = new THREE.Raycaster(new THREE.Vector3(centerX, 200, centerZ), new THREE.Vector3(0, -1, 0));
+            let intersects = rayDown.intersectObjects(visibleObjs, true);
+            
+            if (intersects.length > 0) {
+                targetObj = getTopLevelObject(intersects[0].object);
+            } else if (visibleObjs.length === 1) {
+                targetObj = visibleObjs[0];
+            }
+        }
+
+        if (!targetObj) {
+            showToast('⚠️ 切り取る対象のモデルが見つかりません。モデルを選択するか上にスケッチを描いてください', 'info');
+            setSketchModelTransparency(false);
+            return;
+        }
+
+        showToast('✂️ 2Dスケッチで貫通切り取り中...', 'info');
+
+        setTimeout(() => {
+            try {
+                const bbox = new THREE.Box3().setFromObject(targetObj);
+                const height = bbox.max.y - bbox.min.y;
+                const cutHeight = Math.max(200, height * 2 + 100);
+                const minY = bbox.min.y - 50;
+
+                const shape = buildShapeFromData(shapeData);
+                const cutterGeo = new THREE.ExtrudeGeometry(shape, { depth: cutHeight, bevelEnabled: false });
+                cutterGeo.rotateX(-Math.PI / 2);
+
+                const cutterMat = new THREE.MeshBasicMaterial();
+                const cutterMesh = new THREE.Mesh(cutterGeo, cutterMat);
+                cutterMesh.position.set(origin.x, minY, origin.z);
+                cutterMesh.updateMatrixWorld(true);
+
+                const csgTarget = CSG.fromMesh(targetObj);
+                const csgCutter = CSG.fromMesh(cutterMesh);
+                const csgResult = csgTarget.subtract(csgCutter);
+
+                const resultMesh = CSG.toMesh(csgResult, targetObj.matrixWorld, targetObj.material);
+                resultMesh.userData = {
+                    name: (targetObj.userData.name || 'モデル') + ' (スケッチ切り取り)',
+                    type: 'custom_csg'
+                };
+
+                scene.remove(targetObj);
+                const idx = objects.indexOf(targetObj);
+                if (idx !== -1) objects.splice(idx, 1);
+                disposeObjectResources(targetObj);
+                disposeObjectResources(cutterMesh);
+
+                scene.add(resultMesh);
+                objects.push(resultMesh);
+
+                selectObject(resultMesh);
+                updateObjectDropdown();
+                saveState();
+                setSketchModelTransparency(false);
+                showToast('✂️ スケッチ貫通切り取りが完了しました！', 'info');
+            } catch (err) {
+                console.error("Sketch Cutout Error: ", err);
+                showToast('⚠️ 切り取り処理に失敗しました', 'info');
+                setSketchModelTransparency(false);
+            }
+        }, 50);
+    }
+
+    function beginExtrudeProcess(shapeData, origin) {
+        clearSketchPreviews();
+        sketchPoints = [];
+        document.getElementById('poly-finish-btn').style.display = 'none';
+
+        const defaultHeight = 20;
+        const shape = buildShapeFromData(shapeData);
+        const extrudeSettings = { depth: defaultHeight, bevelEnabled: false };
+        const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+        geo.rotateX(-Math.PI / 2);
+
+        const mat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.35, metalness: 0.1, side: THREE.DoubleSide, transparent: true, opacity: 1.0 });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.copy(origin);
+        mesh.userData = {
+            name: '押し出しモデル',
+            type: 'extruded',
+            sketchShapeData: shapeData,
+            params: { height: defaultHeight }
+        };
+
+        scene.add(mesh);
+        objects.push(mesh);
+
+        pending2DShape = mesh;
+        selectObject(mesh);
+
+        const panel = document.getElementById('extrude-panel');
+        if (panel) panel.style.display = 'flex';
+
+        const rangeInput = document.getElementById('extrude-height');
+        if (rangeInput) {
+            rangeInput.value = defaultHeight;
+            updateLiveExtrude(defaultHeight);
+        }
+    }
+
+    function updateLiveExtrude(value) {
+        const valLabel = document.getElementById('extrude-val');
+        if (valLabel) valLabel.textContent = `${value} mm`;
+        if (!pending2DShape) return;
+
+        const h = Math.max(1, Number(value) || 20);
+        pending2DShape.geometry.dispose();
+
+        const shapeData = pending2DShape.userData.sketchShapeData;
+        if (!shapeData) return;
+
+        const shape = buildShapeFromData(shapeData);
+        const extrudeSettings = { depth: h, bevelEnabled: false };
+        const newGeo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+        newGeo.rotateX(-Math.PI / 2);
+
+        pending2DShape.geometry = newGeo;
+        pending2DShape.userData.params = { height: h };
+    }
+
+    function confirmExtrude3D() {
+        if (!pending2DShape) return;
+
+        pending2DShape = null;
+        document.getElementById('extrude-panel').style.display = 'none';
+        
+        setSketchModelTransparency(false);
+        updateObjectDropdown();
+        saveState();
+        showToast('3Dモデルを作成しました', 'info');
+    }
+
+    function cancelExtrude() {
+        if (pending2DShape) {
+            const index = objects.indexOf(pending2DShape);
+            if (index !== -1) objects.splice(index, 1);
+            scene.remove(pending2DShape);
+            disposeObjectResources(pending2DShape);
+            pending2DShape = null;
+        }
+        document.getElementById('extrude-panel').style.display = 'none';
+        setSketchModelTransparency(false);
+        deselectObject();
+        updateObjectDropdown();
+    }
+
+    // --- SELECTION & OUTLINE ---
+    function getTopLevelObject(mesh) {
+        let curr = mesh;
+        while (curr && curr.parent && curr.parent !== scene) curr = curr.parent;
+        return objects.includes(curr) ? curr : null;
+    }
+
+    function selectObject(obj) {
+        if (!obj || obj.visible === false) return;
+        selectedObject = obj;
+        if (transformControls) transformControls.attach(obj);
+        updateSelectionOutline();
+        updateSelectionActionPanel();
+        updateCoordInputUI();
+        updateObjectDropdown();
+    }
+
+    function deselectObject() {
+        selectedObject = null;
+        if (transformControls) transformControls.detach();
+        updateSelectionOutline();
+        updateSelectionActionPanel();
+        updateObjectDropdown();
+    }
+
+    function updateSelectionOutline() {
+        if (selectionOutlineMesh) {
+            scene.remove(selectionOutlineMesh);
+            if (selectionOutlineMesh.geometry) selectionOutlineMesh.geometry.dispose();
+            selectionOutlineMesh = null;
+        }
+
+        if (selectedObject && selectedObject.visible !== false) {
+            selectionOutlineMesh = new THREE.BoxHelper(selectedObject, 0x0284c7);
+            scene.add(selectionOutlineMesh);
+        }
+    }
+
+    function updateSelectionActionPanel() {
+        const panel = document.getElementById('selection-panel');
+        if (panel) panel.style.display = selectedObject ? 'flex' : 'none';
+        const title = document.getElementById('selected-obj-title');
+        if (title) title.textContent = selectedObject ? `選択中: ${selectedObject.userData.name || 'モデル'}` : '選択中: なし';
+    }
+
+    // --- ANIMATION LOOP & TOAST ---
+    function animate() {
+        requestAnimationFrame(animate);
+        if (controls) controls.update();
+        if (selectionOutlineMesh) selectionOutlineMesh.update();
+        if (renderer && scene && camera) renderer.render(scene, camera);
+    }
+
+    function showToast(message, type = 'info') {
+        const toast = document.getElementById('toast');
+        const msg = document.getElementById('toast-msg');
+        if (!toast || !msg) return;
+        msg.textContent = message;
+        toast.style.opacity = '1';
+        setTimeout(() => { toast.style.opacity = '0'; }, 1800);
+    }
+  </script>
+ </body>
+</html>
